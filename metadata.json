@@ -1,0 +1,6 @@
+{
+  "name": "Blanchisserie & Facturation Pro",
+  "description": "Application moderne de facturation pour blanchisserie et pressing avec suivi des commandes en temps réel par SMS, tableau de bord des revenus et gestion des clients.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
