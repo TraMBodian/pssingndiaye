@@ -81,6 +81,21 @@ interface LaundryContextType {
 
 const LaundryContext = createContext<LaundryContextType | undefined>(undefined);
 
+/*const DEMO_ADMIN_ACCOUNTS = [
+  {
+    email: 'admin@slndiaye.com',
+    password: 'admin2026',
+    name: 'S.L Ndiaye',
+    role: 'ADMIN' as const
+  },
+  {
+    email: 'secondadmin@slndiaye.com',
+    password: 'admin2026',
+    name: 'Admin Secondaire',
+    role: 'GERANT' as const
+  }
+];*/
+
 export const LaundryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Admin authentication state
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
@@ -91,14 +106,41 @@ export const LaundryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = password.trim();
 
-    if (!isSupabaseConfigured || !supabase) {
-      return { success: false, error: 'Supabase Auth n’est pas configuré. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.' };
-    }
     if (!cleanEmail) {
       return { success: false, error: 'Veuillez saisir votre identifiant ou adresse email.' };
     }
     if (!cleanPass) {
       return { success: false, error: 'Veuillez saisir votre mot de passe.' };
+    }
+
+    if (!isSupabaseConfigured || !supabase) {
+      const fallbackUser = DEMO_ADMIN_ACCOUNTS.find(
+        (account) => account.email === cleanEmail && account.password === cleanPass
+      );
+
+      if (fallbackUser) {
+        const demoUser: AdminUser = {
+          id: `demo-${fallbackUser.email}`,
+          name: fallbackUser.name,
+          email: fallbackUser.email,
+          role: fallbackUser.role,
+          lastLogin: new Date().toISOString()
+        };
+
+        setCurrentUser(demoUser);
+        try {
+          localStorage.setItem('laundry_admin_user', JSON.stringify(demoUser));
+          localStorage.setItem('laundry_admin_credentials', JSON.stringify({
+            email: fallbackUser.email,
+            password: fallbackUser.password
+          }));
+        } catch (e) {
+          console.warn('LocalStorage error', e);
+        }
+        return { success: true };
+      }
+
+      return { success: false, error: 'Supabase Auth n’est pas configuré. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.' };
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPass });
@@ -110,7 +152,18 @@ export const LaundryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) return;
+    if (!isSupabaseConfigured || !supabase) {
+      try {
+        const savedUser = localStorage.getItem('laundry_admin_user');
+        if (savedUser) {
+          const parsedUser = JSON.parse(savedUser) as AdminUser;
+          setCurrentUser(parsedUser);
+        }
+      } catch (e) {
+        console.warn('LocalStorage error', e);
+      }
+      return;
+    }
 
     const syncUser = (user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null) => {
       if (!user) {
